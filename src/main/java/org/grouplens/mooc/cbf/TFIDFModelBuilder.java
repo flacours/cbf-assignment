@@ -1,8 +1,14 @@
 package org.grouplens.mooc.cbf;
 
-import com.google.common.collect.Maps;
-
 import it.unimi.dsi.fastutil.longs.LongSet;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.inject.Inject;
+import javax.inject.Provider;
 
 import org.grouplens.lenskit.core.Transient;
 import org.grouplens.lenskit.vectors.MutableSparseVector;
@@ -10,12 +16,7 @@ import org.grouplens.lenskit.vectors.SparseVector;
 import org.grouplens.lenskit.vectors.VectorEntry;
 import org.grouplens.mooc.cbf.dao.ItemTagDAO;
 
-import javax.inject.Inject;
-import javax.inject.Provider;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.google.common.collect.Maps;
 
 /**
  * Builder for computing {@linkplain TFIDFModel TF-IDF models} from item tag data.  Each item is
@@ -76,17 +77,28 @@ public class TFIDFModelBuilder implements Provider<TFIDFModel> {
 
             // TODO Populate the work vector with the number of times each tag is applied to this item.
             List<String>tags = dao.getItemTags(item);
-            double current;
+
             for(String t : tags) {
             	Long key = tagIds.get(t);
-            	current = 0;
-            	if(work.containsKey(key))
-            		current = work.get(key);
-            	work.set(key, ++current);
-            	current = work.get(key);
+  
+            	if(work.containsKey(key)==false)
+            		work.set(key, 1);
+            	else 
+            		work.add(key, 1);
+            	
+            	double current = work.get(key);
             }
 
             // TODO Increment the document frequency vector once for each unique tag on the item.
+            Iterator<VectorEntry> itr =work.iterator();
+            while(itr.hasNext()) {
+            	VectorEntry elem = itr.next();
+            	Long key = elem.getKey();
+            	if(docFreq.containsKey(key)==false)
+            		docFreq.set(key,1);
+            	else
+            		docFreq.add(key, 1);
+            }
 
             // Save a shrunk copy of the vector (only storing tags that apply to this item) in
             // our map, we'll add IDF and normalize later.
