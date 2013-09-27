@@ -85,17 +85,15 @@ public class TFIDFModelBuilder implements Provider<TFIDFModel> {
             		work.set(key, 1);
             	else 
             		work.add(key, 1);
-            	
-            	double current = work.get(key);
             }
 
             // TODO Increment the document frequency vector once for each unique tag on the item.
-            Iterator<VectorEntry> itr =work.iterator();
-            while(itr.hasNext()) {
-            	VectorEntry elem = itr.next();
+
+            for(VectorEntry elem : work.fast())
+            {
             	Long key = elem.getKey();
             	if(docFreq.containsKey(key)==false)
-            		docFreq.set(key,1);
+            		docFreq.set(key, 1);
             	else
             		docFreq.add(key, 1);
             }
@@ -111,6 +109,16 @@ public class TFIDFModelBuilder implements Provider<TFIDFModel> {
         // Invert and log the document frequency.  We can do this in-place.
         for (VectorEntry e: docFreq.fast()) {
             // TODO Update this document frequency entry to be a log-IDF value
+        	double numDocWithTerm = e.getValue();
+        	// FL not sure about this should I have the #doc
+        	double numDoc = itemVectors.size();
+        	// IDF = log(#documents/#document with term)
+        	double ratio = numDoc/numDocWithTerm;
+        	double idf = Math.log(ratio);
+        	docFreq.set(e, idf);
+        	
+        	double idfSet = docFreq.get(e.getKey());
+        	System.out.println("idfSEt " + idfSet);
         }
 
         // Now docFreq is a log-IDF vector.
@@ -120,9 +128,30 @@ public class TFIDFModelBuilder implements Provider<TFIDFModel> {
         for (Map.Entry<Long,MutableSparseVector> entry: itemVectors.entrySet()) {
             MutableSparseVector tv = entry.getValue();
             // TODO Convert this vector to a TF-IDF vector
+            // for each term in the sparse vector
+            for(VectorEntry e : tv.fast())
+            {
+            	long termId = e.getKey();
+            	double idf = docFreq.get(termId);
+            	double tf = e.getValue();
+            	double tfidf = tf * idf;
+            	tv.set(e, tfidf);
+            	
+            	System.out.printf("k=%d tfidf=%.3f\n", termId, tfidf);
+            }
 
             // TODO Normalize the TF-IDF vector to be a unit vector
             // HINT The method tv.norm() will give you the Euclidian length of the vector
+            double euclideLength = tv.norm();
+            System.out.printf("euclide=%f\n", euclideLength);
+            for(VectorEntry e : tv.fast())
+            {
+            	long termId = e.getKey();
+            	double val = e.getValue();
+            	double normalized = val/euclideLength;
+            	tv.set(e, normalized);
+            	System.out.printf("k=%d norm=%.3f\n", termId, normalized);
+            }
             
             // Store a frozen (immutable) version of the vector in the model data.
             modelData.put(entry.getKey(), tv.freeze());
