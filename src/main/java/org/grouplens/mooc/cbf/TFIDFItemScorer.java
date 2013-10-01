@@ -18,6 +18,7 @@ import java.util.List;
 public class TFIDFItemScorer extends AbstractItemScorer {
     private final UserEventDAO dao;
     private final TFIDFModel model;
+    private final Boolean _useWeightedSum = true;
 
     /**
      * Construct a new item scorer.  LensKit's dependency injector will call this constructor and
@@ -78,22 +79,58 @@ public class TFIDFItemScorer extends AbstractItemScorer {
         // Fill it with 0's initially - they don't like anything
         profile.fill(0);
 
-        // Iterate over the user's ratings to build their profile
-        for (Rating r: userRatings) {
-            // In LensKit, ratings are expressions of preference
-            Preference p = r.getPreference();
-            // We'll never have a null preference. But in LensKit, ratings can have null
-            // preferences to express the user unrating an item
-            if (p != null && p.getValue() >= 3.5) {
-                // The user likes this item!
-                // TODO Get the item's vector and add it to the user's profile
-            	SparseVector v = model.getItemVector(p.getItemId());
-            	profile.add(v);
-            }
+        
+        if(_useWeightedSum == false)
+        {
+        	// Iterate over the user's ratings to build their profile
+        	for (Rating r: userRatings) {
+        		// In LensKit, ratings are expressions of preference
+        		Preference p = r.getPreference();
+        		// We'll never have a null preference. But in LensKit, ratings can have null
+        		// preferences to express the user unrating an item
+        		if (p != null && p.getValue() >= 3.5) {
+        			// The user likes this item!
+        			// TODO Get the item's vector and add it to the user's profile
+        			SparseVector v = model.getItemVector(p.getItemId());
+        			profile.add(v);
+        		}
+        	}
+        }
+        else {
+        	// compute average
+        	double average = computeAverageRating(userRatings);
+        	
+        	
+        	for (Rating r: userRatings) {
+        		// In LensKit, ratings are expressions of preference
+        		Preference p = r.getPreference();
+        		double mult  = (p.getValue()-average);
+        		SparseVector iv = model.getItemVector(p.getItemId());
+        		MutableSparseVector v = iv.mutableCopy();
+        		v.multiply(mult);
+        		profile.add(v);
+        	}
         }
 
         // The profile is accumulated, return it.
         // It is good practice to return a frozen vector.
         return profile.freeze();
     }
+
+	private double computeAverageRating(List<Rating> userRatings) {
+		double sum = 0.0;
+		int nbRating = 0;
+		for (Rating r: userRatings) {
+			// In LensKit, ratings are expressions of preference
+			Preference p = r.getPreference();
+			// We'll never have a null preference. But in LensKit, ratings can have null
+			// preferences to express the user unrating an item
+			if (p != null) {
+				nbRating++;
+				sum+= p.getValue();
+			}
+		}
+		double average = sum / nbRating;
+		return average;
+	}
 }

@@ -26,6 +26,7 @@ import com.google.common.collect.Maps;
  */
 public class TFIDFModelBuilder implements Provider<TFIDFModel> {
     private final ItemTagDAO dao;
+    private final Boolean _debug = false;
 
     /**
      * Construct a model builder.  The {@link Inject} annotation on this constructor tells LensKit
@@ -118,7 +119,7 @@ public class TFIDFModelBuilder implements Provider<TFIDFModel> {
         	docFreq.set(e, idf);
         	
         	double idfSet = docFreq.get(e.getKey());
-        	System.out.println("idfSEt " + idfSet);
+        	if(_debug) System.out.println("idfSEt " + idfSet);
         }
 
         // Now docFreq is a log-IDF vector.
@@ -137,20 +138,20 @@ public class TFIDFModelBuilder implements Provider<TFIDFModel> {
             	double tfidf = tf * idf;
             	tv.set(e, tfidf);
             	
-            	System.out.printf("k=%d tfidf=%.3f\n", termId, tfidf);
+            	if(_debug) System.out.printf("k=%d tfidf=%.3f\n", termId, tfidf);
             }
 
             // TODO Normalize the TF-IDF vector to be a unit vector
             // HINT The method tv.norm() will give you the Euclidian length of the vector
             double euclideLength = tv.norm();
-            System.out.printf("euclide=%f\n", euclideLength);
+            if(_debug) System.out.printf("euclide=%f\n", euclideLength);
             for(VectorEntry e : tv.fast())
             {
             	long termId = e.getKey();
             	double val = e.getValue();
             	double normalized = val/euclideLength;
             	tv.set(e, normalized);
-            	System.out.printf("k=%d norm=%.3f\n", termId, normalized);
+            	if(_debug) System.out.printf("k=%d norm=%.3f\n", termId, normalized);
             }
             
             // Store a frozen (immutable) version of the vector in the model data.
